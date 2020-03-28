@@ -147,10 +147,10 @@ class RumValidate
     public static function boolean($msg = '')
     {
         return function ($v, $k, $o) use ($msg) {
-            if (filter_var($v, FILTER_VALIDATE_BOOLEAN)) {
-                return self::succ();
+            if (is_null(filter_var($v, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE))) {
+                return self::fail($msg);
             }
-            return self::fail($msg);
+            return self::succ();
         };
     }
 
@@ -164,10 +164,10 @@ class RumValidate
     public static function float($msg = '')
     {
         return function ($v, $k, $o) use ($msg) {
-            if (filter_var($v, FILTER_VALIDATE_FLOAT)) {
-                return self::succ();
+            if (filter_var($v, FILTER_VALIDATE_FLOAT) === false) {
+                return self::fail($msg);
             }
-            return self::fail($msg);
+            return self::succ();
         };
     }
 
@@ -181,10 +181,10 @@ class RumValidate
     public static function int($msg = '')
     {
         return function ($v, $k, $o) use ($msg) {
-            if (filter_var($v, FILTER_VALIDATE_INT)) {
-                return self::succ();
+            if (filter_var($v, FILTER_VALIDATE_INT) === false) {
+                return self::fail($msg);
             }
-            return self::fail($msg);
+            return self::succ();
         };
     }
 
