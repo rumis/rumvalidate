@@ -17,5 +17,18 @@
         "psr-4": {
             "Rum\\": "./src"
         }
+    },
+    "repositories": {
+        "packagist": {
+            "type": "composer",
+            "url": "https://mirrors.aliyun.com/composer/"
+        },
+        "xeslib": {
+            "type": "composer",
+            "url": "http://packagist.xesv5.com:8093"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0"
     }
 }
