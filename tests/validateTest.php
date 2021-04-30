@@ -72,6 +72,45 @@ class validateTest extends TestCase
         ];
         $ret_check = R::doe($param4, $rules4);
         self::assertEquals($ret_check['error'], 'age空字符串');
+
+        // 默认值
+        $param5 = [
+            'age' => '2'
+        ];
+        $rules5 = [
+            'workcode' => [[R::optional('125057'), R::emptystr(), R::num()], '工号'],
+            'age' => [[R::required(), R::num()], 'age']
+        ];
+        $ret_check = R::doe($param5, $rules5);
+        self::assertEquals($ret_check['data']['workcode'], '125057');
+
+        // 重置字段键
+        $param6 = [
+            'userId' => '2'
+        ];
+        $rules6 = [
+            'userId' => [[R::required(), R::resetKey('user_id')], '重置KEY']
+        ];
+        $ret_check = R::doe($param6, $rules6);
+        self::assertEquals($ret_check['data']['user_id'], '2');
+        self::assertTrue(!isset($ret_check['data']['userId']));
+
+        // 
+        $param7 = [
+            'x' => 3,
+            'tperpage' => 7
+        ];
+        $rules7 = [
+            'curpage' => [[R::optional(2)], '分页'],
+            'tperpage' => [[R::optional()], '分页'],
+            'tsss' => [[R::paginate('x', 'tperpage')], '分页']
+        ];
+        $ret_check = R::doe($param7, $rules7);
+
+        // print_r($ret_check);
+
+        self::assertEquals($ret_check['data']['pagination']['offset'], 14);
+        self::assertEquals($ret_check['data']['pagination']['perpage'], 7);
     }
     /**
      * 格式 
@@ -279,5 +318,47 @@ class validateTest extends TestCase
         $param['dec'] = '12.3';
         $ret_check = R::doe($param, $rules);
         self::assertEquals($ret_check['error'], '');
+    }
+
+    /**
+     * 数组相关校验
+     */
+    public function testArray()
+    {
+        $param = [
+            'eids' => '1,s,3',
+        ];
+        $rules = [
+            'eids' => [[R::required(), R::dotInt('参数eids非法')]]
+        ];
+        $ret_check = R::doe($param, $rules);
+        self::assertEquals($ret_check['error'], '参数eids非法');
+        $param['eids'] = '2,4,2,11111111,3';
+        $ret_check = R::doe($param, $rules);
+        self::assertEquals($ret_check['error'], '');
+
+        $param = [
+            'ids' => ['3' => 3, '2' => 2]
+        ];
+        $rules = [
+            'ids' => [[R::required(), R::isArr('参数ids非数组')]]
+        ];
+        $ret_check = R::doe($param, $rules);
+        self::assertEquals($ret_check['error'], '');
+        $param['ids'] = [1, 2, 3];
+        $ret_check = R::doe($param, $rules);
+        self::assertEquals($ret_check['error'], '');
+
+        $param['ids'] = [1, 2, 3, 2];
+        $rules['ids'] = [[R::required(), R::isArr('参数ids非法', 3)]];
+        $ret_check = R::doe($param, $rules);
+        self::assertEquals($ret_check['error'], '参数ids非法');
+
+        $param['ids'] = [1, 2, 's', 2];
+        $rules['ids'] = [[R::required(), R::isArr('参数ids子项非法', 0, function ($v, $idx) {
+            return is_int($v);
+        })]];
+        $ret_check = R::doe($param, $rules);
+        self::assertEquals($ret_check['error'], '参数ids子项非法');
     }
 }

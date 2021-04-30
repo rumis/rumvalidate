@@ -13,6 +13,7 @@ use Exception;
  */
 class RumValidate
 {
+
     /**
      * 终止校验过程，一般用于可选参数且其值为空时
      */
@@ -26,6 +27,8 @@ class RumValidate
      */
     const SUCCESS = 4;
 
+    // 错误码
+    private static $errCode = 0;
 
     /**
      * 校验
@@ -65,7 +68,7 @@ class RumValidate
                 continue;
             }
             $defaultErrMsg = empty($rule[1]) ? "参数{$key}非法" : $rule[1];
-            $errCode = empty($rule[2]) ? 0 : $rule[2];
+            self::$errCode = empty($rule[2]) ? self::$errCode : $rule[2];
             $funcs = is_array($rule[0]) ? $rule[0] : [$rule[0]];
             foreach ($funcs as $fn) {
                 $r = $fn($data[$key] ?? null, $key, $data);
@@ -73,7 +76,7 @@ class RumValidate
                     break;
                 }
                 if ($r['stat'] == self::FAILURE) {
-                    return ['error' => empty($r['msg']) ? $defaultErrMsg : $r['msg'], 'stat' => $errCode, 'data' => []]; // 校验不通过，返回
+                    return ['error' => empty($r['msg']) ? $defaultErrMsg : $r['msg'], 'stat' => self::$errCode, 'data' => []]; // 校验不通过，返回
                 }
             }
             // 记录需要校验的字段值
@@ -86,16 +89,19 @@ class RumValidate
 
     /**
      * 表示字段值是可选的
-     * @param string $msg 错误提示消息 
+     * @param string $dval 默认值
      * @return: function
      * @author: liumurong  <liumurong1@100tal.com>
      * @Date: 2019-12-10 20:58:14
      */
-    public static function optional($msg = '')
+    public static function optional($dval = null)
     {
-        return function ($v, $k, $o) {
+        return function ($v, $k, &$o) use ($dval) {
             if (isset($v)) {
                 return self::succ();
+            }
+            if (!is_null($dval)) {
+                $o[$k] = $dval;
             }
             return self::break();
         };
@@ -421,6 +427,102 @@ class RumValidate
     {
         $reg = '/^\d+(\.\d{0,' . $max . '})?$/';
         return self::regex($reg, $msg);
+    }
+
+    /**
+     * 使用逗号分隔的各种ID
+     * @author: liumurong  <liumurong1@100tal.com>
+     * @date: 2021-04-30 11:30:08
+     */
+    public static function dotInt($msg = '')
+    {
+        $reg = '/^([1-9][0-9]*)+(,[1-9][0-9]*)*$/';
+        return self::regex($reg, $msg);
+    }
+
+    /**
+     * 逗号分隔参数的个数规则
+     * @author: liumurong  <liumurong1@100tal.com>
+     * @date: 2021-04-30 15:40:31
+     */
+    public static function maxDot($max = 0, $msg = '')
+    {
+        return function ($v, $k, $o) use ($max, $msg) {
+            $ct = substr_count($v, ',');
+            if ($ct + 1 > $max) {
+                return self::fail($msg);
+            }
+            return self::succ();
+        };
+    }
+
+    /**
+     * 是否为数组
+     * @param $msg string 异常提示消息
+     * @param $vfn function 数组中子项校验规则
+     * @author: liumurong  <liumurong1@100tal.com>
+     * @date: 2021-04-30 14:16:17
+     */
+    public static function isArr($msg = '', $max = 0, $vfn = null)
+    {
+        return function ($v, $k, $o) use ($msg, $vfn, $max) {
+            // 是否为数组
+            if (!is_array($v)) {
+                return self::fail($msg);
+            }
+            // 数组长度
+            if ($max > 0 && count($v) > $max) {
+                return self::fail($msg);
+            }
+            // 校验数组子项是否符合规则
+            if (!is_null($vfn) && is_callable($vfn)) {
+                foreach ($v as $k => $sv) {
+                    if (!$vfn($sv, $k)) {
+                        return self::fail($msg);
+                    }
+                }
+            }
+            return self::succ();
+        };
+    }
+
+    /**
+     * 重置KEY名称
+     * @author: liumurong  <liumurong1@100tal.com>
+     * @date: 2021-04-30 11:24:14
+     */
+    public static function resetKey($nkey)
+    {
+        return function ($v, &$k, &$o) use ($nkey) {
+            if (isset($o[$k])) {
+                $o[$nkey] = $v;
+                $k = $nkey;
+            }
+            return self::succ();
+        };
+    }
+
+    /**
+     * @method: POST
+     * @param {*}
+     * @return {*}
+     * @author: liumurong  <liumurong1@100tal.com>
+     * @date: 2021-04-30 17:24:13
+     */
+    public static function paginate($curpage = 'curpage', $perpage = 'perpage', $pagin = 'pagination')
+    {
+        return function ($v, &$k, &$o) use ($curpage, $perpage, $pagin) {
+            $tcur = $o[$curpage] ?? 1;
+            $tper = $o[$perpage] ?? 10;
+            $oldKey = $k;
+            $k = $pagin;
+            $o[$pagin] = [
+                'offset' => ($tcur - 1) * $tper,
+                'perpage' => $tper
+            ];
+            unset($o[$oldKey]); // 剔除这个无意义的key
+            return self::succ();
+        };
     }
 
     /**
