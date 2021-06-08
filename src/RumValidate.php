@@ -102,6 +102,7 @@ class RumValidate
             }
             if (!is_null($dval)) {
                 $o[$k] = $dval;
+                return self::succ();
             }
             return self::break();
         };
